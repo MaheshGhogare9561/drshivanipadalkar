@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Enquiry Form Test</title>
+<!-- LOCAL TEST PAGE ONLY. Not uploaded to Hostinger ("*-test.html" is in the sftp.json ignore list).
+     Use it to check the Google Apps Script web app before connecting the live site. -->
+<style>
+:root{--wine:#73334d;--ink:#30272c;--muted:#6d6066;--line:#e3d2d9;--bg:#f9f3f0;--ok:#1f7a4d;--err:#b3261e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 Arial,Helvetica,sans-serif}
+main{max-width:620px;margin:40px auto;padding:0 16px}
+h1{font-family:Georgia,serif;color:var(--wine);margin:0 0 6px;font-size:28px}
+.sub{color:var(--muted);margin:0 0 24px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px;margin-bottom:18px}
+h2{font-size:16px;margin:0 0 14px}
+label{display:block;font-size:13px;font-weight:700;margin:0 0 6px}
+input,select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 13px;font:inherit;margin-bottom:14px;background:#fff;color:var(--ink)}
+textarea{min-height:80px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.check{display:flex;gap:8px;align-items:center;font-weight:400}.check input{width:auto;margin:0}
+button{background:var(--wine);color:#fff;border:0;border-radius:50px;padding:12px 24px;font-weight:700;cursor:pointer;margin-right:8px}
+button.alt{background:#fff;color:var(--wine);border:1px solid var(--wine)}
+button:disabled{opacity:.6;cursor:wait}
+#log{font:13px/1.5 Consolas,monospace;background:#2b2228;color:#f3e8ec;border-radius:12px;padding:14px;min-height:90px;white-space:pre-wrap;word-break:break-word}
+.ok{color:#8fe0b5}.err{color:#ff9d94}
+@media(max-width:520px){.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>Enquiry Form Test</h1>
+<p class="sub">Sends a test enquiry to the Google Apps Script web app, the same way index.html does. Check the Google Sheet for the new row, then delete it.</p>
+
+<div class="card">
+<h2>1. Web app URL</h2>
+<label for="url">Paste the URL from Deploy &gt; Web app</label>
+<input id="url" placeholder="https://script.google.com/macros/s/.../exec">
+<button class="alt" id="ping" type="button">Check it's live</button>
+</div>
+
+<form class="card" id="f">
+<h2>2. Test enquiry</h2>
+<div class="row">
+<div><label for="name">Name</label><input id="name" name="name" value="Test Patient" required></div>
+<div><label for="phone">Phone</label><input id="phone" name="phone" value="9999999999" required></div>
+</div>
+<label for="topic">Topic</label>
+<select id="topic" name="topic"><option>General consultation</option><option>Skin concern</option><option>Hair or scalp concern</option><option>Nail concern</option><option>Aesthetic / cosmetic concern</option></select>
+<label for="message">Message</label>
+<textarea id="message" name="message">TEST - please delete this row</textarea>
+<label class="check"><input type="checkbox" name="consent" value="yes" checked> Consent given</label><br>
+<button id="send" type="submit">Send test enquiry</button>
+</form>
+
+<div class="card">
+<h2>3. Result</h2>
+<div id="log">Waiting...</div>
+</div>
+</main>
+
+<script>
+(function () {
+  var urlBox = document.getElementById('url');
+  var log = document.getElementById('log');
+  try { urlBox.value = localStorage.getItem('sp-script-url') || ''; } catch (e) {}
+  urlBox.addEventListener('change', function () { try { localStorage.setItem('sp-script-url', urlBox.value.trim()); } catch (e) {} });
+
+  function write(msg, cls) {
+    var line = document.createElement('div');
+    if (cls) line.className = cls;
+    line.textContent = new Date().toLocaleTimeString() + '  ' + msg;
+    if (log.textContent === 'Waiting...') log.textContent = '';
+    log.appendChild(line);
+  }
+  function getUrl() {
+    var u = urlBox.value.trim();
+    if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(u)) {
+      write('Enter a valid web app URL ending in /exec.', 'err'); return null;
+    }
+    return u;
+  }
+
+  // GET: reads doGet() response, confirms the deployment is reachable and public
+  document.getElementById('ping').addEventListener('click', function () {
+    var u = getUrl(); if (!u) return;
+    write('Checking ' + u + ' ...');
+    fetch(u).then(function (r) { return r.text(); })
+      .then(function (t) { write('Live: ' + t, 'ok'); })
+      .catch(function (e) { write('Could not read a reply (' + e.message + '). Check "Who has access: Anyone" in the deployment.', 'err'); });
+  });
+
+  // POST: same request the website sends
+  document.getElementById('f').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var u = getUrl(); if (!u) return;
+    var btn = document.getElementById('send');
+    var data = new URLSearchParams(new FormData(e.target));
+    data.set('page', 'branch-test.html');
+    btn.disabled = true;
+    write('Sending test enquiry...');
+    fetch(u, { method: 'POST', mode: 'no-cors', body: data })
+      .then(function () { write('Sent. Open the Google Sheet: a new row with "Test Patient" should appear within a few seconds.', 'ok'); })
+      .catch(function (err) { write('Failed to send: ' + err.message, 'err'); })
+      .finally(function () { btn.disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>
