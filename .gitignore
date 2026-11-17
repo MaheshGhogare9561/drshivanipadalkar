@@ -1,7 +1,1 @@
-# SFTP login details - never commit
 .vscode/sftp.json
-
-# OS / editor junk
-.DS_Store
-Thumbs.db
-*.zip
